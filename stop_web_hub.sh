@@ -1,7 +1,7 @@
 #!/bin/bash
-# stop_web_hub.sh - Stop the CCRI CTF Student Hub cleanly (project-root aware)
+# stop_web_hub.sh - Stop the CCRI CTF Hub cleanly (project-root aware)
 
-echo "🛑 Stopping CCRI CTF Student Hub..."
+echo "🛑 Stopping CCRI CTF Hub..."
 
 # === Helper: Find Project Root ===
 find_project_root() {
@@ -13,18 +13,27 @@ find_project_root() {
         fi
         dir="$(dirname "$dir")"
     done
-    echo "❌ ERROR: Could not find .ccri_ctf_root marker. Are you inside the CTF repo?" >&2
+    echo "❌ ERROR: Could not find .ccri_ctf_root marker. Are you inside the CTF folder?" >&2
     exit 1
 }
 
-# === Resolve project directories ===
 PROJECT_ROOT="$(find_project_root)"
-WEB_ADMIN_DIR="$PROJECT_ROOT/web_version_admin"
 
-# === Kill server.pyc and server.py processes in this repo ===
-echo "🔍 Searching for server.pyc and server.py processes..."
-pkill -f "$WEB_ADMIN_DIR/server.pyc" 2>/dev/null && echo "✅ Killed server.pyc" || echo "⚠️ No server.pyc process running."
-pkill -f "$WEB_ADMIN_DIR/server.py"  2>/dev/null && echo "✅ Killed server.py"  || echo "⚠️ No server.py process running."
+# === Detect mode: Admin vs Student ===
+if [[ -d "$PROJECT_ROOT/web_version_admin" ]]; then
+    echo "🛠️  Admin/Dev mode detected (web_version_admin found)."
+    SERVER_FILE_ADMIN="$PROJECT_ROOT/web_version_admin/server.py"
+    SERVER_FILEC_ADMIN="$PROJECT_ROOT/web_version_admin/server.pyc"
+else
+    echo "🎓 Student mode detected (web_version_admin not found)."
+    SERVER_FILE_STUDENT="$PROJECT_ROOT/web_version/server.pyc"
+fi
+
+# === Kill server.py or server.pyc processes ===
+echo "🔍 Searching for running server processes..."
+pkill -f "$SERVER_FILE_ADMIN" 2>/dev/null && echo "✅ Killed server.py (Admin)" || echo "⚠️ No server.py process running."
+pkill -f "$SERVER_FILEC_ADMIN" 2>/dev/null && echo "✅ Killed server.pyc (Admin)" || echo "⚠️ No server.pyc process running (Admin)."
+pkill -f "$SERVER_FILE_STUDENT" 2>/dev/null && echo "✅ Killed server.pyc (Student)" || echo "⚠️ No server.pyc process running (Student)."
 
 # === Check prerequisites ===
 if ! command -v lsof >/dev/null 2>&1; then
@@ -56,4 +65,5 @@ else
     echo "⚠️ No simulated services running on ports 8000–8100."
 fi
 
+echo
 echo "🎯 All cleanup complete."

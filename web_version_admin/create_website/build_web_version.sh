@@ -41,7 +41,6 @@ ADMIN_JSON = os.path.join(ADMIN_DIR, "challenges.json")
 TEMPLATES_FOLDER = os.path.join(ADMIN_DIR, "templates")
 STATIC_FOLDER = os.path.join(ADMIN_DIR, "static")
 SERVER_SOURCE = os.path.join(ADMIN_DIR, "server.py")
-START_SCRIPT_SOURCE = os.path.join(ADMIN_DIR, "start_web_hub.sh")
 ENCODE_KEY = "CTF4EVER"
 
 def xor_encode(plaintext, key):
@@ -107,13 +106,6 @@ def prepare_web_version():
         os.path.join(STUDENT_DIR, "static"),
         dirs_exist_ok=True
     )
-
-    # Copy start_web_hub.sh and set executable
-    print("📂 Copying start_web_hub.sh...")
-    start_script_dest = os.path.join(STUDENT_DIR, "start_web_hub.sh")
-    shutil.copy2(START_SCRIPT_SOURCE, start_script_dest)
-    os.chmod(start_script_dest, os.stat(start_script_dest).st_mode | stat.S_IXUSR)
-    print(f"✅ Copied and made executable: {start_script_dest}")
 
     # Compile server.py to server.pyc
     print("⚙️ Compiling server.py for student version...")
