@@ -6,104 +6,108 @@ This repository powers a custom **Parrot Linux Capture The Flag (CTF)** experien
 👥 **This repository is for CCRI CyberKnights club members only.**
 It contains all of the **source files, admin tools, and scripts** used to build and maintain the student-facing version of the CTF.
 
-> 🛑 **High school participants will never see this repository or its contents.**
-> They will interact only with the pre-built *student version* provided in their VM.
+> 🛑 **High school participants never see this repository or its contents.**
+> They only interact with the pre-built *student version* deployed in their VM.
 
 ---
 
-## 🗂️ Project Overview (Admin Repo)
+## 🗂️ Key Components
 
-```
-Desktop/
-├── CCRI_CTF/                     # Main CTF folder (admin/dev version)
-│   ├── challenges/               # Source files for all interactive challenges
-│   ├── web_version/              # Student-facing web portal (auto-generated)
-│   ├── web_version_admin/        # Admin-only tools and templates
-│   ├── Launch CCRI CTF Hub.desktop # Shortcut to launch the student hub
-│   ├── (various admin scripts)   # Tools for flag generation, testing, and builds
-│   ├── README.md                 # This file
-│   └── CONTRIBUTING.md           # Club collaboration guide
-└── (misc)                        # Additional admin/dev resources
-```
+### 🖥️ **Admin Environment**
 
-In the **student VM**, only this subset will appear:
+* `challenges/` – Source files for all interactive CTF challenges (editable by admins).
+* `web_version_admin/` – Admin-only web portal, templates, and development tools.
+* `web_version/` – Auto-generated **student-facing** web portal (no source files).
+* `start_web_hub.sh` – Unified launcher for admin and student environments.
+* `stop_web_hub.sh` – Cleanly stops the web server and simulated services.
+* `build_web_version.sh` – Builds and obfuscates the student web portal, inside web_version_admin/create_website
+* `copy_ccri_ctf.sh` – Copies the prepared CTF bundle to a student account Desktop.
+* `.ccri_ctf_root` – Marker file for detecting the project root.
 
-```
-Desktop/
-├── CCRI_CTF/                     # Student bundle (generated from this repo)
-│   ├── challenges/               # Interactive CTF challenges
-│   ├── web_version/              # Student-facing web portal (ready-to-use)
-│   ├── Launch CCRI CTF Hub.desktop # Shortcut to launch the student hub
-└── (no admin scripts or source files)
-```
+### 🎓 **Student Environment (what students see)**
 
-The student version is designed to be **self-contained and simple**, with no developer or admin resources visible.
+* `challenges/` – Interactive CTF challenges.
+* `web_version/` – Pre-built web portal (runs obfuscated server).
+* `Launch CCRI CTF Hub.desktop` – Shortcut to start the web hub.
+
+The **student version** is self-contained, with no developer tools or source files.
 
 ---
 
 ## 🚀 Preparing the Student VM
 
-To prepare the student environment:
-
-1. On the **admin account**, run the build script:
+1. **Build the student web portal:**
 
    ```bash
-   cd CCRI_CTF/web_version_admin/create_website
    ./build_web_version.sh
    ```
 
-   This process will:
+   * Obfuscates all challenge flags.
+   * Generates `web_version/` with only student-safe assets.
 
-   * Obfuscate flags for students.
-   * Build the student web portal in `CCRI_CTF/web_version/`.
-
-2. While still in the **admin account**, use the provided script to copy the required files to the student’s Desktop folder and set ownership to the student account:
+2. **Copy the bundle to the student account:**
 
    ```bash
    ./copy_ccri_ctf.sh
    ```
 
-   This script ensures robust copying and correct permissions.
+   * Copies `CCRI_CTF/` to the student Desktop.
+   * Ensures correct ownership and permissions.
 
-3. Log in to the **student account** and verify permissions:
+3. **Log in as the student** and verify:
 
-   * Right-click **Launch CCRI CTF Hub.desktop → Properties → Permissions**
-   * ✅ Enable *“Allow this file to run as a program”*
-   * ✅ Ensure the student account has ownership and read/write permissions for all copied files and folders.
+   * ✅ The web hub launches correctly via `Launch CCRI CTF Hub.desktop`.
+   * ✅ All challenges and scripts execute without admin privileges.
 
-4. Test the web portal from the student account to confirm all challenges launch properly.
+4. **Test the student experience.**
+
+---
+
+## 🔑 Key Scripts
+
+| Script                 | Purpose                                                            |
+| ---------------------- | ------------------------------------------------------------------ |
+| `start_web_hub.sh`     | Unified launcher for admin (dev tools) and student (obfuscated).   |
+| `stop_web_hub.sh`      | Stops the web hub and simulated services cleanly.                  |
+| `build_web_version.sh` | Rebuilds and obfuscates the student portal.                        |
+| `copy_ccri_ctf.sh`     | Copies the CTF folder to a student Desktop with fixed permissions. |
 
 ---
 
 ## 🛠 Admin Workflow (Quick Reference)
 
-* 🔄 **Rebuild student hub:**
+* 🔄 **Rebuild student portal:**
 
   ```bash
-  cd CCRI_CTF/web_version_admin/create_website
   ./build_web_version.sh
   ```
 
-* 📂 **Copy student bundle to Desktop:**
+* 📂 **Copy to student account:**
 
   ```bash
   ./copy_ccri_ctf.sh
   ```
 
-* 🧪 **Test in admin mode** (full tools) and student mode (restricted tools).
+* 🚀 **Launch web hub (admin or student):**
 
-* 🚧 **Keep admin-only flags, scripts, and tools out of `web_version/`.**
+  ```bash
+  ./start_web_hub.sh
+  ```
 
-* ✅ Use relative paths wherever possible for portability.
+* 🛑 **Stop web hub and clean ports:**
+
+  ```bash
+  ./stop_web_hub.sh
+  ```
 
 ---
 
 ## 🙌 Club Member Guidelines
 
 ✔️ Commit only admin/dev content to this repository.
-✔️ Don’t push compiled files (`*.pyc`, `__pycache__/`, etc.) or student builds (`web_version/`).
+✔️ Do **not** push compiled files (`*.pyc`, `__pycache__/`, etc.) or student builds (`web_version/`).
 ✔️ Test all new challenges and scripts before release.
-✔️ See [CONTRIBUTING.md](CONTRIBUTING.md) for Git workflows and team guidelines.
+✔️ Follow [CONTRIBUTING.md](CONTRIBUTING.md) for Git workflows and team collaboration.
 
 ---
 
