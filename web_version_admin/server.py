@@ -1,4 +1,11 @@
-from flask import Flask, render_template, request, jsonify, Markup
+try:
+    # Flask 2.x: Markup is part of flask
+    from flask import Flask, render_template, request, jsonify, Markup
+except ImportError:
+    # Flask 3.x: Markup moved to markupsafe
+    from flask import Flask, render_template, request, jsonify
+    from markupsafe import Markup
+
 import subprocess
 import json
 import os
@@ -15,8 +22,15 @@ app = Flask(__name__)
 XOR_KEY = "CTF4EVER"
 
 # === Load student challenges.json ===
-with open('challenges.json', 'r') as f:
-    challenges = json.load(f)
+try:
+    with open('challenges.json', 'r') as f:
+        challenges = json.load(f)
+except FileNotFoundError:
+    print("❌ ERROR: Could not find 'challenges.json' in the current directory!")
+    exit(1)
+except json.JSONDecodeError:
+    print("❌ ERROR: 'challenges.json' contains invalid JSON!")
+    exit(1)
 
 # === Helper: XOR Decode ===
 def xor_decode(encoded_base64, key):
@@ -45,10 +59,13 @@ def challenge_view(challenge_id):
     readme_path = os.path.join(folder, 'README.txt')
     readme_html = ""
     if os.path.exists(readme_path):
-        with open(readme_path, 'r', encoding='utf-8') as f:
-            raw_readme = f.read()
-            # Convert Markdown to HTML
-            readme_html = Markup(markdown.markdown(raw_readme))
+        try:
+            with open(readme_path, 'r', encoding='utf-8') as f:
+                raw_readme = f.read()
+                # Convert Markdown to HTML
+                readme_html = Markup(markdown.markdown(raw_readme))
+        except Exception as e:
+            readme_html = f"<p><strong>Error loading README:</strong> {e}</p>"
 
     # List other files (excluding README and hidden files)
     file_list = [
@@ -62,7 +79,7 @@ def challenge_view(challenge_id):
         'challenge.html',
         challenge_id=challenge_id,
         challenge=challenge,
-        readme=readme_html,  # Pass rendered HTML
+        readme=readme_html,
         files=file_list
     )
 
@@ -99,85 +116,24 @@ def open_folder(challenge_id):
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/run_script/<challenge_id>', methods=['POST'])
-def run_script(challenge_id):
-    """Run the helper script in gnome-terminal"""
-    if challenge_id not in challenges:
-        return jsonify({"status": "error", "message": "Challenge not found"}), 404
-
-    # Resolve absolute paths
-    folder = os.path.abspath(challenges[challenge_id]['folder'])
-    script = challenges[challenge_id]['script']
-    script_path = os.path.join(folder, script)
-
-    if not os.path.exists(script_path):
-        return jsonify({"status": "error", "message": "Script not found"}), 404
-
-    try:
-        subprocess.Popen([
-            'gnome-terminal',
-            '--working-directory', folder,
-            '--',
-            'bash', script_path
-        ])
-        return jsonify({"status": "success"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
 # === Simulated Open Ports (Challenge #17) ===
 FAKE_FLAGS = {
-    8004: "NMAP-PORT-4312",       # fake
-    8023: "SCAN-4312-PORT",       # fake
+    8004: "NMAP-PORT-4312",
+    8023: "SCAN-4312-PORT",
     8047: "CCRI-SCAN-8472",       # ✅ REAL FLAG
-    8072: "OPEN-SERVICE-9281",    # fake
-    8095: "HTTP-7721-SERVER"      # fake
-}
-
-JUNK_RESPONSES = {
-    8001: "Welcome to Dev HTTP Server v1.3\nPlease login to continue.",
-    8009: "🔒 Unauthorized: API key required.",
-    8015: "503 Service Unavailable\nTry again later.",
-    8020: "<html><body><h1>It works!</h1><p>Apache2 default page.</p></body></html>",
-    8028: "DEBUG: Connection established successfully.",
-    8033: "💡 Tip: Scan only the ports you really need.",
-    8039: "ERROR 400: Bad request syntax.",
-    8045: "System maintenance in progress. Expected downtime: 13 minutes.",
-    8051: "Welcome to Experimental IoT Server (beta build).",
-    8058: "Python HTTP Server: directory listing not allowed.",
-    8064: "💻 Dev API v0.1 — POST requests only.",
-    8077: "403 Forbidden: You don’t have permission to access this resource.",
-    8083: "Error 418: I’m a teapot.",
-    8089: "Hello World!\nTest endpoint active.",
-    8098: "Server under maintenance.\nPlease retry in 5 minutes."
+    8072: "OPEN-SERVICE-9281",
+    8095: "HTTP-7721-SERVER"
 }
 
 SERVICE_NAMES = {
-    8001: "dev-http",
     8004: "configd",
-    8009: "secure-api",
-    8015: "maintenance",
-    8020: "apache",
     8023: "metricsd",
-    8028: "debug-service",
-    8033: "help-service",
-    8039: "http",
-    8045: "maintenance",
-    8047: "sysmon-api",       # ✅ real flag is here, neutral name
-    8051: "iot-server",
-    8058: "http",
-    8064: "dev-api",
+    8047: "sysmon-api",
     8072: "update-agent",
-    8077: "secure-api",
-    8083: "http",
-    8089: "test-service",
-    8095: "metrics-gateway",
-    8098: "maintenance"
+    8095: "metrics-gateway"
 }
 
-# === Start Real Services on Ports 8000–8100 ===
-ALL_PORTS = {}
-ALL_PORTS.update(FAKE_FLAGS)
-ALL_PORTS.update(JUNK_RESPONSES)
+ALL_PORTS = FAKE_FLAGS.copy()
 
 class PortHandler(BaseHTTPRequestHandler):
     """Custom HTTP handler for simulated ports"""
@@ -187,8 +143,7 @@ class PortHandler(BaseHTTPRequestHandler):
         banner = f"👋 Welcome to {service_name} Service\n\n"
         self.send_response(200)
         self.send_header("Content-type", "text/plain; charset=utf-8")
-        self.send_header("Server", service_name)  # Hint Nmap
-        self.send_header("X-Service-Name", service_name)  # Custom header for Nmap
+        self.send_header("Server", service_name)
         self.end_headers()
         self.wfile.write((banner + response).encode("utf-8"))
 
@@ -205,8 +160,8 @@ def start_fake_service(port):
     except OSError as e:
         print(f"❌ Could not bind port {port}: {e}")
 
-# Launch all fake services
-for port in ALL_PORTS.keys():
+# Start all fake services
+for port in ALL_PORTS:
     start_fake_service(port)
 
 # === Start Flask Hub ===
