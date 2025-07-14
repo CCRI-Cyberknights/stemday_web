@@ -15,16 +15,18 @@ find_project_root() {
         DIR="$(dirname "$DIR")"
     done
     echo "❌ ERROR: Could not find project root marker (.ccri_ctf_root)." >&2
+    read -p "Press ENTER to exit..." junk
     exit 1
 }
 
 PROJECT_ROOT="$(find_project_root)"
-SRC="$PROJECT_ROOT/CCRI_CTF"
+SRC="$PROJECT_ROOT"
 
 # === Prompt for student username ===
 read -p "👤 Enter the student account username (e.g., 'ccri_stem'): " STUDENT_USER
 if [ -z "$STUDENT_USER" ]; then
     echo "❌ No username entered. Aborting."
+    read -p "Press ENTER to exit..." junk
     exit 1
 fi
 
@@ -55,6 +57,7 @@ if [ -d "$DEST" ]; then
             ;;
         * )
             echo "🚫 Aborting: Folder already exists and not deleted."
+            read -p "Press ENTER to exit..." junk
             exit 1
             ;;
     esac
@@ -64,6 +67,7 @@ fi
 if $DRY_RUN; then
     echo "📝 Dry run: showing what would be copied..."
     rsync -avhn --progress \
+        --include ".ccri_ctf_root" \
         --include "challenges/***" \
         --include "web_version/***" \
         --include "Launch CCRI CTF Hub.desktop" \
@@ -71,6 +75,7 @@ if $DRY_RUN; then
         "$SRC/" "$DEST/"
     echo
     echo "✅ Dry run complete. No files were copied."
+
 else
     echo "📂 Copying selected files from:"
     echo "   $SRC"
@@ -78,6 +83,7 @@ else
     echo "   $DEST"
     echo
     sudo rsync -avh --progress \
+        --include ".ccri_ctf_root" \
         --include "challenges/***" \
         --include "web_version/***" \
         --include "Launch CCRI CTF Hub.desktop" \
@@ -96,7 +102,34 @@ else
     echo "✅ Selective copy complete. Ownership and permissions fixed."
 fi
 
+# === Summary of Copied Content ===
+echo
+echo "📄 Summary of $DEST:"
+echo "-----------------------------------"
+sudo ls -lah "$DEST" | head -n 10
+echo "..."
+
+# Show a few sample files
+echo
+echo "📁 Sample from challenges/:"
+sudo ls -lah "$DEST/challenges" | head -n 5
+echo "..."
+
+echo "📁 Sample from web_version/:"
+sudo ls -lah "$DEST/web_version" | head -n 5
+echo "..."
+
+# Confirm .ccri_ctf_root presence and ownership
+if [[ -f "$DEST/.ccri_ctf_root" ]]; then
+    echo "✅ Found .ccri_ctf_root in $DEST"
+    echo "   Ownership:"
+    ls -lah "$DEST/.ccri_ctf_root"
+else
+    echo "⚠️ .ccri_ctf_root not found in $DEST"
+fi
+
 echo
 echo "🎯 Done! Switch to $STUDENT_USER to test:"
 echo "    su - $STUDENT_USER"
 echo "    cd ~/Desktop/CCRI_CTF"
+read -p "📖 Press ENTER to exit..." junk
