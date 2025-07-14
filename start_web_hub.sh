@@ -32,24 +32,30 @@ else
     SERVER_FILE="server.pyc"
 fi
 
-# === Change to server directory ===
-cd "$SERVER_DIR" || {
-    echo "❌ ERROR: Could not change to $SERVER_DIR. Exiting."
-    exit 1
-}
-
-# === Check Python ===
-if ! command -v python3 >/dev/null 2>&1; then
-    echo "❌ ERROR: Python 3 is not installed or not in PATH."
+# === Validate server path ===
+SERVER_PATH="$SERVER_DIR/$SERVER_FILE"
+if [[ ! -f "$SERVER_PATH" ]]; then
+    echo "❌ ERROR: Cannot find $SERVER_FILE in $SERVER_DIR"
     exit 1
 fi
 
-# === Start Flask server ===
-echo "🌐 Launching Flask web server from: $SERVER_DIR/$SERVER_FILE"
-nohup python3 "$SERVER_FILE" >/dev/null 2>&1 &
+# === Check if Flask server already running on port 5000 ===
+echo "🔍 Checking if web server is already running on port 5000..."
+if command -v lsof >/dev/null 2>&1 && lsof -i:5000 >/dev/null 2>&1; then
+    echo "🌐 Flask web server is already running. Skipping launch."
+else
+    echo "🌐 Launching Flask web server from: $SERVER_PATH"
+    LOG_FILE="$PROJECT_ROOT/web_server.log"
+    nohup python3 "$SERVER_PATH" > "$LOG_FILE" 2>&1 &
+    sleep 2
 
-# Wait for server to initialize
-sleep 2
+    # Check if it successfully launched
+    if ! curl -s http://localhost:5000 >/dev/null; then
+        echo "❌ ERROR: Flask server failed to start. Check logs at: $LOG_FILE"
+        exit 1
+    fi
+    echo "✅ Flask server started successfully."
+fi
 
 # === Launch browser ===
 echo "🌐 Opening browser to http://localhost:5000 ..."

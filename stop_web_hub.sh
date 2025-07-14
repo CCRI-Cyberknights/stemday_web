@@ -22,35 +22,47 @@ PROJECT_ROOT="$(find_project_root)"
 # === Detect mode: Admin vs Student ===
 if [[ -d "$PROJECT_ROOT/web_version_admin" ]]; then
     echo "🛠️  Admin/Dev mode detected (web_version_admin found)."
-    SERVER_FILE_ADMIN="$PROJECT_ROOT/web_version_admin/server.py"
-    SERVER_FILEC_ADMIN="$PROJECT_ROOT/web_version_admin/server.pyc"
+    SERVER_FILE="$PROJECT_ROOT/web_version_admin/server.py"
+    SERVER_FILEC="$PROJECT_ROOT/web_version_admin/server.pyc"
 else
     echo "🎓 Student mode detected (web_version_admin not found)."
-    SERVER_FILE_STUDENT="$PROJECT_ROOT/web_version/server.pyc"
+    SERVER_FILE="$PROJECT_ROOT/web_version/server.pyc"
 fi
 
-# === Kill server.py or server.pyc processes ===
+# === Safer process kill ===
 echo "🔍 Searching for running server processes..."
-pkill -f "$SERVER_FILE_ADMIN" 2>/dev/null && echo "✅ Killed server.py (Admin)" || echo "⚠️ No server.py process running."
-pkill -f "$SERVER_FILEC_ADMIN" 2>/dev/null && echo "✅ Killed server.pyc (Admin)" || echo "⚠️ No server.pyc process running (Admin)."
-pkill -f "$SERVER_FILE_STUDENT" 2>/dev/null && echo "✅ Killed server.pyc (Student)" || echo "⚠️ No server.pyc process running (Student)."
+for file in "$SERVER_FILE" "$SERVER_FILEC"; do
+    if [[ -f "$file" ]]; then
+        pids=$(pgrep -f "python3.*$file")
+        if [[ -n "$pids" ]]; then
+            echo "⚠️ Found server process(es) for $file: $pids"
+            read -p "❓ Kill these processes? [y/N]: " confirm
+            if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                echo "$pids" | xargs kill -9
+                echo "✅ Killed server process(es) for $file."
+            else
+                echo "🚫 Skipping kill for $file."
+            fi
+        else
+            echo "⚠️ No server process found for $file."
+        fi
+    fi
+done
 
-# === Check prerequisites ===
-if ! command -v lsof >/dev/null 2>&1; then
-    echo "⚠️ WARNING: 'lsof' not found. Cannot check ports. Skipping port cleanup."
-    exit 0
-fi
-
-# === Kill any Flask/Gunicorn processes on port 5000 ===
-if lsof -i:5000 >/dev/null 2>&1; then
-    echo "🔪 Killing processes on port 5000..."
-    lsof -ti:5000 | xargs -r kill -9
-    echo "✅ Port 5000 cleared."
+# === Kill Flask on port 5000 ===
+if command -v lsof >/dev/null 2>&1; then
+    if lsof -i:5000 >/dev/null 2>&1; then
+        echo "🔪 Killing processes on port 5000..."
+        lsof -ti:5000 | xargs -r kill -9
+        echo "✅ Port 5000 cleared."
+    else
+        echo "⚠️ No processes found on port 5000."
+    fi
 else
-    echo "⚠️ No processes found on port 5000."
+    echo "⚠️ WARNING: 'lsof' not found. Skipping port cleanup."
 fi
 
-# === Kill all simulated services on ports 8000–8100 ===
+# === Kill simulated services on ports 8000–8100 ===
 ports_killed=0
 for port in $(seq 8000 8100); do
     if lsof -iTCP:$port -sTCP:LISTEN >/dev/null 2>&1; then
