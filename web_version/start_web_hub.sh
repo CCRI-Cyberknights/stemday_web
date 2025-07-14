@@ -1,31 +1,11 @@
 #!/bin/bash
-# start_web_hub.sh - Launch the CTF student hub (project-root aware version)
+# start_web_hub.sh - Launch the CTF student hub (robust version)
 
 set -e
 
 echo "🚀 Starting the CCRI CTF Student Hub..."
-
-# === Helper: Find Project Root ===
-find_project_root() {
-    local dir="$PWD"
-    while [[ "$dir" != "/" ]]; do
-        if [[ -f "$dir/.ccri_ctf_root" ]]; then
-            echo "$dir"
-            return 0
-        fi
-        dir="$(dirname "$dir")"
-    done
-    echo "❌ ERROR: Could not find .ccri_ctf_root marker. Are you inside the CTF repo?" >&2
-    exit 1
-}
-
-# === Resolve project directories ===
-PROJECT_ROOT="$(find_project_root)"
-WEB_ADMIN_DIR="$PROJECT_ROOT/web_version_admin"
-CHALLENGES_DIR="$PROJECT_ROOT/challenges"
-
-cd "$WEB_ADMIN_DIR" || {
-    echo "❌ ERROR: Could not change to $WEB_ADMIN_DIR. Exiting."
+cd "$(dirname "$0")" || {
+    echo "❌ ERROR: Could not change to script directory. Exiting."
     exit 1
 }
 
@@ -53,17 +33,17 @@ else
     echo "🌐 Starting Flask web server on port 5000..."
     flask_running=false
 
-    # Start server if present
-    if [[ -f "$WEB_ADMIN_DIR/server.pyc" ]]; then
-        nohup python3 "$WEB_ADMIN_DIR/server.pyc" >/dev/null 2>&1 &
-    elif [[ -f "$WEB_ADMIN_DIR/server.py" ]]; then
-        nohup python3 "$WEB_ADMIN_DIR/server.py" >/dev/null 2>&1 &
+    # Attempt to start the server
+    if [ -f "server.pyc" ]; then
+        nohup python3 server.pyc >/dev/null 2>&1 &
+    elif [ -f "server.py" ]; then
+        nohup python3 server.py >/dev/null 2>&1 &
     else
-        echo "❌ ERROR: server.py not found in $WEB_ADMIN_DIR. Cannot start web hub."
+        echo "❌ ERROR: server.py not found in $(pwd). Cannot start web hub."
         exit 1
     fi
 
-    sleep 2  # Give it time to spin up
+    sleep 2  # Give it a moment to spin up
 fi
 
 # === Check if any ports 8000–8100 are already in use ===
@@ -78,7 +58,7 @@ done
 if [[ $ports_in_use -gt 0 ]]; then
     echo "🛰️ Detected $ports_in_use simulated services already running on ports 8000–8100."
 else
-    if [[ "$flask_running" == true ]]; then
+    if [ "$flask_running" = true ]; then
         echo "⚠️ Flask is running but no simulated services detected on ports 8000–8100."
         echo "   (These are normally started automatically by server.py.)"
     else
@@ -100,7 +80,7 @@ for i in {1..10}; do
     if [[ $i -eq 10 ]]; then
         echo "❌ ERROR: Web server did not start within expected time."
         echo "💡 You may need to check 'server.py' for errors or run it manually with:"
-        echo "    python3 $WEB_ADMIN_DIR/server.py"
+        echo "    python3 server.py"
         exit 1
     fi
 done
@@ -110,11 +90,13 @@ echo "🌐 Opening browser to http://localhost:5000..."
 export DISPLAY=:0  # Ensure graphical display is set
 
 if command -v xdg-open >/dev/null 2>&1; then
-    nohup xdg-open "http://localhost:5000" >/dev/null 2>&1 || \
-    echo "⚠️ WARNING: Failed to launch browser with xdg-open. Open manually: http://localhost:5000"
+    if ! nohup xdg-open http://localhost:5000 >/dev/null 2>&1; then
+        echo "⚠️ WARNING: Failed to launch browser with xdg-open. Open manually: http://localhost:5000"
+    fi
 elif command -v firefox >/dev/null 2>&1; then
-    nohup firefox "http://localhost:5000" >/dev/null 2>&1 || \
-    echo "⚠️ WARNING: Failed to launch Firefox. Open manually: http://localhost:5000"
+    if ! nohup firefox http://localhost:5000 >/dev/null 2>&1; then
+        echo "⚠️ WARNING: Failed to launch Firefox. Open manually: http://localhost:5000"
+    fi
 else
     echo "⚠️ WARNING: No browser launcher found (xdg-open or Firefox)."
     echo "💡 Please open http://localhost:5000 manually in your browser."
