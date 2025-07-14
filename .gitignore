@@ -4,6 +4,7 @@ __pycache__/
 *.bak
 *.swp
 *.log
+*binary_flag.c
 
 # Ignore compiled binaries and temp C files
 *.o
