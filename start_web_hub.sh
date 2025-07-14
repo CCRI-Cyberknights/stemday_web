@@ -23,11 +23,31 @@ PROJECT_ROOT="$(find_project_root)"
 
 # === Detect mode: Admin vs Student ===
 if [[ -d "$PROJECT_ROOT/web_version_admin" ]]; then
-    echo "🛠️  Admin/Dev mode detected (web_version_admin found)."
-    SERVER_DIR="$PROJECT_ROOT/web_version_admin"
-    SERVER_FILE="server.py"
+    echo "🛠️  Admin/Dev environment detected (web_version_admin found)."
+    
+    # Prompt user for mode
+    echo
+    echo "Which mode would you like to run?"
+    echo "1) 🛠️  Admin Mode (full tools, editable flags)"
+    echo "2) 🎓 Student Mode (restricted, obfuscated flags)"
+    echo
+    read -p "Enter choice [1-2]: " mode_choice
+    case "$mode_choice" in
+        1)
+            SERVER_DIR="$PROJECT_ROOT/web_version_admin"
+            SERVER_FILE="server.py"
+            ;;
+        2)
+            SERVER_DIR="$PROJECT_ROOT/web_version"
+            SERVER_FILE="server.pyc"
+            ;;
+        *)
+            echo "❌ Invalid choice. Exiting."
+            exit 1
+            ;;
+    esac
 else
-    echo "🎓 Student mode detected (web_version_admin not found)."
+    echo "🎓 Student environment detected (web_version_admin not found)."
     SERVER_DIR="$PROJECT_ROOT/web_version"
     SERVER_FILE="server.pyc"
 fi
@@ -59,11 +79,13 @@ fi
 
 # === Launch browser ===
 echo "🌐 Opening browser to http://localhost:5000 ..."
+export DISPLAY=:0  # Ensure graphical display is set
+
 if command -v xdg-open >/dev/null 2>&1; then
-    nohup xdg-open "http://localhost:5000" >/dev/null 2>&1 || \
-    echo "⚠️ WARNING: Failed to launch browser. Open manually: http://localhost:5000"
+    setsid xdg-open "http://localhost:5000" >/dev/null 2>&1 || \
+    echo "⚠️ WARNING: Failed to launch browser with xdg-open. Open manually: http://localhost:5000"
 elif command -v firefox >/dev/null 2>&1; then
-    nohup firefox "http://localhost:5000" >/dev/null 2>&1 || \
+    setsid firefox "http://localhost:5000" >/dev/null 2>&1 || \
     echo "⚠️ WARNING: Failed to launch Firefox. Open manually: http://localhost:5000"
 else
     echo "⚠️ No browser launcher found. Please open http://localhost:5000 manually."
