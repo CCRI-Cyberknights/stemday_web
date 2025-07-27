@@ -1,3 +1,4 @@
+# Archived
 # 🌟 `stemday2025` Project README (Admin-Only)
 
 Welcome to the **CCRI CyberKnights STEM Day VM Project!** 🎉  
